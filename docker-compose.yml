@@ -1,0 +1,46 @@
+services:
+  netdata:
+    image: netdata/netdata:stable
+    container_name: signalguard-netdata
+    hostname: signalguard-netdata
+    ports:
+      - "19999:19999"
+    restart: unless-stopped
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - apparmor:unconfined
+    volumes:
+      - netdata-config:/etc/netdata
+      - netdata-lib:/var/lib/netdata
+      - netdata-cache:/var/cache/netdata
+      - /etc/passwd:/host/etc/passwd:ro
+      - /etc/group:/host/etc/group:ro
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /etc/os-release:/host/etc/os-release:ro
+
+  signalguard:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: signalguard
+    depends_on:
+      - netdata
+    environment:
+      SIGNALGUARD_NETDATA_URL: http://netdata:19999
+      SIGNALGUARD_LLM_PROVIDER: ${SIGNALGUARD_LLM_PROVIDER:-openrouter}
+      SIGNALGUARD_LLM_MODEL: ${SIGNALGUARD_LLM_MODEL:-google/gemini-2.5-flash-lite}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434/v1}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      OPENROUTER_BASE_URL: ${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
+      SIGNALGUARD_APP_NAME: signalguard
+      SIGNALGUARD_APP_URL: ${SIGNALGUARD_APP_URL:-http://localhost}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+
+volumes:
+  netdata-config:
+  netdata-lib:
+  netdata-cache:
